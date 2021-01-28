@@ -5,8 +5,6 @@ SAMPLEDATA=0
 EXT=""
 QUIET=0
 
-#set -x
-
 function usage()
 {
     echo -e "Usage:"
@@ -201,7 +199,6 @@ function copyfiles()
 	sleep 5
 
 	echo -e "\033[1mCopying files from host to container...\033[0m"
-	# rm -rf src/vendor
 
 	PHPFPM_CONTAINER=$(docker-compose ps -q phpfpm | awk '{print $1}')
 	docker cp ./src/./ $PHPFPM_CONTAINER:/var/www/html
@@ -331,10 +328,11 @@ function postInstall()
 	docker-compose exec -T phpfpm bin/magento indexer:reindex
 	docker-compose exec -T phpfpm bin/magento cache:flush
 
-	echo "Access frontend here: https://${BASE_URL}/"
-	echo "Access backend here:  https://${BASE_URL}/${ADMIN_URL}"
-	echo "  Username: ${ADMIN_USER}"
-	echo "  Password: ${ADMIN_PASSWORD}"
+	echo -e "\033[1mInstallation complete!\033[0m\n"
+	echo -e "\033[1mAccess frontend here:\033[0m https://${BASE_URL}/"
+	echo -e "\033[1mAccess backend here:\033[0m  https://${BASE_URL}/${ADMIN_URL}"
+	echo -e "  \033[1mUsername:\033[0m ${ADMIN_USER}"
+	echo -e "  \033[1mPassword:\033[0m ${ADMIN_PASSWORD}"
 }
 
 while [ "$1" != "" ]; do
@@ -365,11 +363,6 @@ done
 
 
 preinstall
-
-#download
-# extract
-# copyfiles # extract passes on to copyfiles
-
 composerSetup
 installMagento
 postInstall
