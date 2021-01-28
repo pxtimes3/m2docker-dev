@@ -3,26 +3,127 @@
 VERSION=2.4.1
 SAMPLEDATA=0
 EXT=""
+QUIET=0
 
-set -o history -o histexpand
-
-source ./env
+#set -x
 
 function usage()
 {
-    echo "Usage:"
-    echo ""
-    echo "$ bash setup-magento.bash" 
-    echo ""
-    echo "Arguments:"
-    echo "--version"
-    echo "  Your preferred version of Magento 2."
-    echo "  bash setup-magento.bash --version=2.4.1"
-    echo "--sample-data"
-    echo "  Setup Magento 2 with sample data."
-    echo "  bash setup-magento.bash --version=2.4.1 --sample-data=1"
-    echo "-h or --help"
-    echo "  Shows this help"
+    echo -e "Usage:"
+    echo -e ""
+    echo -e "$ bash setup-magento.bash" 
+    echo -e ""
+    echo -e "Arguments:"
+    echo -e "--version"
+    echo -e "  Your preferred version of Magento 2."
+    echo -e "  bash setup-magento.bash --version=2.4.1"
+    echo -e "--sample-data"
+    echo -e "  Setup Magento 2 with sample data."
+    echo -e "  bash setup-magento.bash --version=2.4.1 --sample-data=1"
+    echo -e "--quiet or -q"
+    echo -e "  No prompts"
+    echo -e "-h or --help"
+    echo -e "  Shows this help"
+}
+
+function checkEnv()
+{
+	if [ ! -f ./env ]; then
+		echo -e "No env-file found..."
+		if [ ! -f ./env-sample ]; then
+			echo -e "No env.sample found... creating new."
+			touch ./env
+			[ $? != 0 ] && echo -e "Failed to create new env-file. Permissions OK?!" && exit
+			
+			echo -e "MYSQL_HOST=db" >> ./env
+			echo -e "MYSQL_ROOT_PASSWORD=magento" >> ./env
+			echo -e "MYSQL_DATABASE=magento" >> ./env
+			echo -e "MYSQL_USER=magento" >> ./env
+			echo -e "MYSQL_PASSWORD=magento" >> ./env
+			echo -e "" >> ./env
+			echo -e "BASE_URL=magento2.local" >> ./env
+			echo -e "" >> ./env
+			echo -e "ADMIN_URL=admin" >> ./env
+			echo -e "ADMIN_USER=admin" >> ./env
+			echo -e "ADMIN_EMAIL=admin@example.com" >> ./env
+			echo -e "ADMIN_PASSWORD=password123" >> ./env
+			echo -e "" >> ./env
+			echo -e "LANGUAGE=sv_SE" >> ./env
+			echo -e "CURRENCY=sek" >> ./env
+			echo -e "TIMEZONE=Europe/Stockholm" >> ./env
+			echo -e "" >> ./env
+			echo -e "PUBLIC_KEY=" >> ./env
+			echo -e "PRIVATE_KEY=" >> ./env
+
+			echo -e "env-file created. Fill in your repo-keys and re-run the installer."
+			exit
+		else
+			cp env-sample env
+			echo -e "Renamed env-sample to env. Fill in your repo-keys and re-run the installer."
+		fi
+	else
+		echo -e "\033[1menv exists\033[0m"
+		source ./env
+	fi
+}
+
+function checkDockerImages()
+{
+	echo -e "\033[1mChecking Docker images...\033[0m"
+
+	MISSINGIMAGES=()
+
+	if [[ $(docker images | grep -Ec "mynginx") == 1 ]]; then
+		echo -e "  Found \"mynginx\""
+	else
+		MISSINGIMAGES+=("nginx")
+	fi
+	
+	if [[ $(docker images | grep -Ec "myphp") == 1 ]]; then
+		echo -e "  Found \"myphp\""
+	else
+		MISSINGIMAGES+=("php")
+	fi
+
+	if [[ $(docker images | grep -Ec "myelasticsearcha") == 1 ]]; then
+		echo -e "  Found \"myelasticsearch\""
+	else
+		MISSINGIMAGES+=("elasticsearch")
+	fi
+	
+	#echo $MISSINGIMAGES
+
+	if [[ ${#MISSINGIMAGES[@]} > 0 ]]; then
+		echo -e "\033[1mCouldn't find the following images:\033[0m"
+
+		for i in "${MISSINGIMAGES[@]}"
+		do
+			echo -e "  my${i}"
+		done
+
+		
+		if [ $QUIET == 1 ]; then
+			CHOICE=Y
+			echo -e "\033[1mQuiet mode on. Skipping... \033[0m"
+		else
+			read -p "If you have built your own images and updated docker-compose.yml accordingly answer yes [Y/n]? " CHOICE
+			case "$CHOICE" in 
+	  			n|N ) buildDockerImages ${MISSINGIMAGES[@]};;
+	  			#* ) copyfiles;;
+			esac
+		fi
+	fi
+}
+
+function buildDockerImages()
+{
+	echo -e "\033[1mBuilding images...\033[0m"
+	echo -e ""
+
+	for i in "${@}"
+	do
+		docker build --no-cache --rm --tag my${i} ./images/${i}
+	done
 }
 
 function download()
@@ -34,87 +135,206 @@ function download()
 	fi
 
 	if [ ! -f ./source/magento2-${EXT}.tar.gz ]; then
-		echo "Downloading magento2-${EXT}.tar.gz"
+		echo -e "\033[1mDownloading magento2-${EXT}.tar.gz\033[0m"
     	mkdir -p ./source
     	(cd ./source && curl -fOL http://pubfiles.nexcess.net/magento/ce-packages/magento2-${EXT}.tar.gz)
     else
-    	echo "magento2-${EXT}.tar.gz found in source/"
+    	echo -e "\033[1mmagento2-${EXT}.tar.gz found in source/\033[0m"
 	fi
 }
 
 function extract() 
 {
 	if [ ! -f ./source/magento2-${EXT}.tar.gz ]; then
-		echo "ERROR: Was expecting to find magento2-${EXT}.tar.gz in source/ but it wasn't there..."
+		echo -e "\033[1m\033[31mERROR: Was expecting to find magento2-${EXT}.tar.gz in source/ but it wasn't there...\033[0m"
 		exit 1
 	else
-		echo "Extracting magento2-${EXT}.tar.gz to ./src"
+		echo -e "\033[1mExtracting magento2-${EXT}.tar.gz to ./src\033[0m"
     	mkdir -p src && tar xzf ./source/magento2-${EXT}.tar.gz -o -C src
 	fi
 }
 
 function preinstall()
 {
-	echo "Installing Magento 2 with the following parameters:"
-	echo ""
-	echo "MYSQL_HOST = ${MYSQL_HOST}"
-	echo "MYSQL_ROOT_PASSWORD = ${MYSQL_ROOT_PASSWORD}"
-	echo "MYSQL_DATABASE = ${MYSQL_DATABASE}"
-	echo "MYSQL_USER = ${MYSQL_USER}"
-	echo "MYSQL_PASSWORD = ${MYSQL_PASSWORD}"
-	echo "BASE_URL = ${BASE_URL}"
-	echo "ADMIN_URL = ${ADMIN_URL}"
-	echo "ADMIN_USER = ${ADMIN_USER}"
-	echo "ADMIN_PASSWORD = ${ADMIN_PASSWORD}"
-	echo "LANGUAGE = ${LANGUAGE}"
-	echo "CURRENCY = ${CURRENCY}"
-	echo "TIMEZONE = ${TIMEZONE}"
-	echo ""
-	read -p "Is this correct [Y/n]?" CHOICE
-	case "$CHOICE" in 
-  		y|Y ) copyfiles;;
-  		n|N ) echo "Please edit the env-file and re-run the installer."; return;;
-  		* ) echo "Aborting";;
-	esac
+	if [[ $(pwd | grep -E -o 'bin$') == "bin" ]]; then
+		echo -e "Please run the script from your project root directory."
+		exit
+	fi
+	
+	checkEnv
+	checkDockerImages
+	
+	if [[ $SAMPLEDATA == 0 ]]; then
+		echo -e "\nInstalling Magento 2, \033[1mversion ${VERSION}\033[0m, with the following parameters:"
+	else
+		echo -e "\nInstalling Magento 2, \033[1mversion ${VERSION} with sample data\033[0m, with the following parameters:"
+	fi
+
+	echo -e "  \033[1mMYSQL_HOST\033[0m = ${MYSQL_HOST}"
+	echo -e "  \033[1mMYSQL_ROOT_PASSWORD\033[0m = ${MYSQL_ROOT_PASSWORD}"
+	echo -e "  \033[1mMYSQL_DATABASE\033[0m = ${MYSQL_DATABASE}"
+	echo -e "  \033[1mMYSQL_USER\033[0m = ${MYSQL_USER}"
+	echo -e "  \033[1mMYSQL_PASSWORD\033[0m = ${MYSQL_PASSWORD}"
+	echo -e "  \033[1mBASE_URL\033[0m = ${BASE_URL}"
+	echo -e "  \033[1mADMIN_URL\033[0m = ${ADMIN_URL}"
+	echo -e "  \033[1mADMIN_USER\033[0m = ${ADMIN_USER}"
+	echo -e "  \033[1mADMIN_PASSWORD\033[0m = ${ADMIN_PASSWORD}"
+	echo -e "  \033[1mLANGUAGE\033[0m = ${LANGUAGE}"
+	echo -e "  \033[1mCURRENCY\033[0m = ${CURRENCY}"
+	echo -e "  \033[1mTIMEZONE\033[0m = ${TIMEZONE}\n"
+
+	if [ $QUIET == 1 ]; then
+		copyfiles
+	else
+		read -p "Is this correct [Y/n]? " CHOICE
+		case "$CHOICE" in 
+	  		n|N ) echo -e "Please edit the env-file and re-run the installer."; return;;
+	  		* ) copyfiles;;
+		esac
+	fi
 }
 
 function copyfiles()
 {
 	docker-compose -f docker-compose.yml up -d
-	[ $? != 0 ] && echo "Failed to start Docker services" && exit
+	[ $? != 0 ] && echo -e "\033[1m\033[31mERROR: Failed to start Docker services\033[0m" && exit
 	sleep 5
 
-	echo "Copying files from host to container..."
-	rm -rf src/vendor
+	echo -e "\033[1mCopying files from host to container...\033[0m"
+	# rm -rf src/vendor
 
 	PHPFPM_CONTAINER=$(docker-compose ps -q phpfpm | awk '{print $1}')
-	docker cp ./src/./ ${PHPFPM_CONTAINER}:/var/www/html
+	docker cp ./src/./ $PHPFPM_CONTAINER:/var/www/html
 
 	if [ $? != 0 ]; then
-		echo "Copying of files failed!"
+		echo -e "\033[1m\033[31mERROR: Copying of files failed!\033[0m"
 		exit
 	else
-		echo "Files copied from src/ to volume..."
+		echo -e "\033[1mFiles copied from src/ to volume...\033[0m"
 	fi
 	
 	docker-compose exec -T -u root phpfpm chmod u+x bin/magento
 	if [ $? != 0 ]; then
-		echo "ERROR: Couldn't set permissions on bin/magento!"
+		echo -e "ERROR: Couldn't set permissions on bin/magento!"
 		exit
 	fi
+	docker-compose exec -T -u root phpfpm chown -R app:app /var/www/html/
+	docker-compose exec -T phpfpm cp /var/www/html/nginx.conf.sample /var/www/html/nginx.conf
 }
 
 function composerSetup()
 {
-	composer global config http-basic.repo.magento.com $PUBLIC_KEY $PRIVATE_KEY
+	docker-compose exec -T phpfpm composer global config http-basic.repo.magento.com $PUBLIC_KEY $PRIVATE_KEY
 	if [ $? != 0 ]; then
-		echo "ERROR: Couldn't set keys for repo.magento.com!"
+		echo -e "\033[1m\033[31mERROR: Couldn't set keys for repo.magento.com!\033[0m"
 		exit
 	else
-		echo "Keys for repo.magento.com set..."
+		echo -e "Keys for repo.magento.com set..."
 	fi
 
+	echo -e "\033[1mYou will now see the following from Composer:\033[0m"
+	echo -e "  Package hirak/prestissimo is abandoned... "
+	echo -e "\033[1mWhich is totally fine since we're still forced to use Composer v1.\033[0m"
+	echo -e "\033[1mYou can safely remove this once the Magento 2 modules are updated to play nice with Composer v2\033[0m"
+    docker-compose exec -T phpfpm composer global require hirak/prestissimo
+
+    echo -e "\033[1mUpdating Composer modules...\033[0m"
 	docker-compose exec -T phpfpm composer update
+}
+
+function installMagento()
+{
+	docker-compose exec -T phpfpm bin/magento setup:install \
+		--db-host=$MYSQL_HOST \
+		--db-name=$MYSQL_DATABASE \
+		--db-user=$MYSQL_USER \
+		--db-password=$MYSQL_PASSWORD \
+		--base-url=https://$BASE_URL/ \
+		--base-url-secure=https://$BASE_URL/ \
+		--backend-frontname=$ADMIN_URL \
+		--admin-firstname=John \
+		--admin-lastname=Doe \
+		--admin-email=$ADMIN_EMAIL \
+		--admin-user=$ADMIN_USER \
+		--admin-password=$ADMIN_PASSWORD \
+		--language=en_US \
+		--currency=SEK \
+		--timezone=Europe/Stockholm \
+		--amqp-host=rabbitmq \
+		--amqp-port=5672 \
+		--amqp-user=guest \
+		--amqp-password=guest \
+		--amqp-virtualhost=/ \
+		--cache-backend=redis \
+		--cache-backend-redis-server=redis \
+		--cache-backend-redis-db=0 \
+		--page-cache=redis \
+		--page-cache-redis-server=redis \
+		--page-cache-redis-db=1 \
+		--session-save=redis \
+		--session-save-redis-host=redis \
+		--session-save-redis-log-level=4 \
+		--session-save-redis-db=2 \
+		--search-engine=elasticsearch7 \
+		--elasticsearch-host=elasticsearch \
+		--use-rewrites=1
+}
+
+function postInstall()
+{
+	echo -e "\033[1mInstalling markshust/magento2-module-disabletwofactorauth... \033[0m"
+	docker-compose exec -T phpfpm composer require markshust/magento2-module-disabletwofactorauth
+	docker-compose exec -T phpfpm bin/magento module:enable MarkShust_DisableTwoFactorAuth
+
+	echo -e "\033[1m De-bloating the install... \033[0m"
+	docker-compose exec -T phpfpm bin/magento module:disable \
+		Amazon_Core \
+		Amazon_Login \
+		Amazon_Payment \
+		Dotdigitalgroup_Chat \
+		Dotdigitalgroup_Email \
+		Magento_AdobeIms \
+		Magento_AdobeImsApi \
+		Magento_AdobeStockAdminUi \
+		Magento_AdobeStockAsset \
+		Magento_AdobeStockAssetApi \
+		Magento_AdobeStockClient \
+		Magento_AdobeStockClientApi \
+		Magento_AdobeStockImage \
+		Magento_AdobeStockImageAdminUi \
+		Magento_AdobeStockImageApi \
+		Magento_CardinalCommerce \
+		Magento_Dhl \
+		Magento_Elasticsearch6 \
+		Magento_Fedex \
+		Magento_NewRelicReporting \
+		Magento_Ups \
+		Magento_Usps \
+		Magento_Weee \
+		Magento_WeeeGraphQl \
+		PayPal_Braintree \
+		PayPal_BraintreeGraphQl \
+		Temando_ShippingRemover \
+		Vertex_AddressValidation \
+		Vertex_AddressValidationApi \
+		Vertex_Tax \
+		Yotpo_Yotpo
+
+	docker-compose exec -T phpfpm bin/magento setup:upgrade
+
+	echo -e "\033[1mDisabling 2FA... \033[0m"
+	docker-compose exec -T phpfpm bin/magento config:set twofactorauth/general/enable 0
+
+	echo -e "\033[1mTurning on developer mode, reindexing and flushing the cache... \033[0m"
+	docker-compose exec -T phpfpm bin/magento deploy:mode:set developer
+	docker-compose exec -T phpfpm bin/magento setup:static-content:deploy -f
+	docker-compose exec -T phpfpm bin/magento indexer:reindex
+	docker-compose exec -T phpfpm bin/magento cache:flush
+
+	echo "Access frontend here: https://${BASE_URL}/"
+	echo "Access backend here:  https://${BASE_URL}/${ADMIN_URL}"
+	echo "  Username: ${ADMIN_USER}"
+	echo "  Password: ${ADMIN_PASSWORD}"
 }
 
 while [ "$1" != "" ]; do
@@ -131,8 +351,11 @@ while [ "$1" != "" ]; do
         --sample-data)
 			SAMPLEDATA=1
 			;;
+		-q|--quiet)
+			QUIET=1
+			;;
         *)
-            echo "ERROR: unknown parameter \"$PARAM\""
+            echo -e "ERROR: unknown parameter \"$PARAM\""
             usage
             exit
             ;;
@@ -140,8 +363,13 @@ while [ "$1" != "" ]; do
     shift
 done
 
+
+preinstall
+
 #download
-#extract
-#copyfiles
+# extract
+# copyfiles # extract passes on to copyfiles
+
 composerSetup
-#install
+installMagento
+postInstall

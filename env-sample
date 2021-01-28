@@ -8,11 +8,12 @@ BASE_URL=magento2.local
 
 ADMIN_URL=admin
 ADMIN_USER=admin
+ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=password123
 
-LANGUAGE=en_US
-CURRENCY=USD
-TIMEZONE=Europe/Berlin
+LANGUAGE=sv_SE
+CURRENCY=sek
+TIMEZONE=Europe/Stockholm
 
 PUBLIC_KEY=
 PRIVATE_KEY=
