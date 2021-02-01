@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+
+RUNNINGCONTAINERS=()
+
+function usage() 
+{
+  echo -e "Usage:"
+    echo -e ""
+    echo -e "$ bin/start" 
+    echo -e ""
+    echo -e "Arguments:"
+    echo -e "-r"
+    echo -e "  Restarts docker-compose"
+    echo -e "-s"
+    echo -e "  Shuts down the containers"
+}
+
+function start()
+{
+  RUNNINGCONTAINERSLINE=""
+  checkContainers
+  if [ $? -gt 0 ];then
+    for i in ${RUNNINGCONTAINERS[@]} 
+    do
+      RUNNINGCONTAINERSLINE="${RUNNINGCONTAINERSLINE} ${i}"
+    done
+    echo -e "Found the following containers running: ${RUNNINGCONTAINERSLINE}"
+    echo -e "Stopping running containers..."
+    docker stop ${RUNNINGCONTAINERSLINE}
+  fi
+
+  $(docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --remove-orphans -d)
+  
+}
+
+function shutdown()
+{
+  $(docker-compose -f docker-compose.yml -f docker-compose.dev.yml stop)
+}
+
+function checkContainers()
+{
+  PREFIX=$(pwd | grep -E -o '\w+$')
+  CONTAINERS=$(docker ps --format '{{ .Names }}')
+
+  while read -r LINE; do
+    CONTAINERPREFIX=$(echo ${LINE} | grep -Eo '^[^_]+')
+    if [[ $CONTAINERPREFIX == ${PREFIX} ]]; then
+      RUNNINGCONTAINERS+=("$LINE")
+    fi
+  done <<< "${CONTAINERS}"
+  
+  return ${#RUNNINGCONTAINERS[@]}
+}
+
+while [ "$1" != "" ]; do
+    PARAM=$(echo $1 | awk -F= '{print $1}')
+    VALUE=$(echo $1 | awk -F= '{print $2}')
+    case $PARAM in
+      -r)
+        RESTART=1
+        start
+        ;;
+      -s)
+       shutdown
+        ;;
+      *)
+        echo -e "ERROR: unknown parameter \"${PARAM}\""
+        usage
+        exit
+        ;;
+    esac
+    shift
+done
+
+start

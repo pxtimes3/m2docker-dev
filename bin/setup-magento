@@ -26,42 +26,44 @@ function usage()
 
 function checkEnv()
 {
+	ENVLOC="./env"
+
 	if [ ! -f ./env ]; then
 		echo -e "No env-file found..."
 		if [ ! -f ./env-sample ]; then
-			echo -e "No env.sample found... creating new."
-			touch ./env
+			echo -e "No env-sample found... creating new env-file."
+			touch $ENVLOC
 			[ $? != 0 ] && echo -e "Failed to create new env-file. Permissions OK?!" && exit
 			
-			echo -e "MYSQL_HOST=db" >> ./env
-			echo -e "MYSQL_ROOT_PASSWORD=magento" >> ./env
-			echo -e "MYSQL_DATABASE=magento" >> ./env
-			echo -e "MYSQL_USER=magento" >> ./env
-			echo -e "MYSQL_PASSWORD=magento" >> ./env
-			echo -e "" >> ./env
-			echo -e "BASE_URL=magento2.local" >> ./env
-			echo -e "" >> ./env
-			echo -e "ADMIN_URL=admin" >> ./env
-			echo -e "ADMIN_USER=admin" >> ./env
-			echo -e "ADMIN_EMAIL=admin@example.com" >> ./env
-			echo -e "ADMIN_PASSWORD=password123" >> ./env
-			echo -e "" >> ./env
-			echo -e "LANGUAGE=sv_SE" >> ./env
-			echo -e "CURRENCY=sek" >> ./env
-			echo -e "TIMEZONE=Europe/Stockholm" >> ./env
-			echo -e "" >> ./env
-			echo -e "PUBLIC_KEY=" >> ./env
-			echo -e "PRIVATE_KEY=" >> ./env
+			echo -e "MYSQL_HOST=db" >> $ENVLOC
+			echo -e "MYSQL_ROOT_PASSWORD=magento" >> $ENVLOC
+			echo -e "MYSQL_DATABASE=magento" >> $ENVLOC
+			echo -e "MYSQL_USER=magento" >> $ENVLOC
+			echo -e "MYSQL_PASSWORD=magento" >> $ENVLOC
+			echo -e "" >> $ENVLOC
+			echo -e "BASE_URL=magento2.local" >> $ENVLOC
+			echo -e "" >> $ENVLOC
+			echo -e "ADMIN_URL=admin" >> $ENVLOC
+			echo -e "ADMIN_USER=admin" >> $ENVLOC
+			echo -e "ADMIN_EMAIL=admin@example.com" >> $ENVLOC
+			echo -e "ADMIN_PASSWORD=password123" >> $ENVLOC
+			echo -e "" >> $ENVLOC
+			echo -e "LANGUAGE=sv_SE" >> $ENVLOC
+			echo -e "CURRENCY=sek" >> $ENVLOC
+			echo -e "TIMEZONE=Europe/Stockholm" >> $ENVLOC
+			echo -e "" >> $ENVLOC
+			echo -e "PUBLIC_KEY=" >> $ENVLOC
+			echo -e "PRIVATE_KEY=" >> $ENVLOC
 
 			echo -e "env-file created. Fill in your repo-keys and re-run the installer."
 			exit
 		else
-			cp env-sample env
+			cp ./env-sample ./env
 			echo -e "Renamed env-sample to env. Fill in your repo-keys and re-run the installer."
 		fi
 	else
 		echo -e "\033[1menv exists\033[0m"
-		source ./env
+		source $ENVLOC
 	fi
 }
 
