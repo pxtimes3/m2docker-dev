@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+
+INIPATH=$(docker-compose exec -T -u root phpfpm bash -c "php --ini | grep xdebug | sed 's/,//g'")
+INICONTENT=$(docker-compose exec -T -u root phpfpm bash -c "cat $INIPATH")
+XDEBUGPATH=$(docker-compose exec -T -u root phpfpm pecl list-files xdebug | grep -E -o 'src .*' | awk -F " " '{print $2}' | sed -E 's/ //g')
+
+function installXdebug()
+{
+  if [[ $INICONTENT != "zendextension=${XDEBUGPATH}" ]]; then
+    echo -e "Xdebug not configured properly..."
+    echo -e "${INICONTENT}"
+    echo -e "Setting docker-php-ext-xdebug.ini to zendextension=${XDEBUGPATH}"
+    (docker-compose exec -T -u root phpfpm bash -c "echo zendextension=${XDEBUGPATH} > /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini")
+    echo -e "Restarting the phpfpm container..."
+    (docker-compose restart phpfpm)
+  else
+    echo -e "Xdebug is already enabled and active... "
+  fi
+}
+
+function disableXdebug()
+{
+  SEMICOLON=$(echo "${INICONTENT}"|grep -Ec '^;')
+  
+  if [ "$SEMICOLON" != "1" ]; then
+    (docker-compose exec -T -u root phpfpm bash -c "sed -Ei 's/^zendextension/;zendextension/g' ${INIPATH}")
+    echo -e "Restarting the phpfpm container..."
+    (docker-compose restart phpfpm)
+    statusXdebug
+  else
+    statusXdebug
+  fi
+}
+
+function enableXdebug()
+{
+  SEMICOLON=$(echo "${INICONTENT}"|grep -Ec '^;')
+  
+  if [ "$SEMICOLON" == "1" ]; then
+    (docker-compose exec -T -u root phpfpm bash -c "sed -Ei 's/^;zendextension/zendextension/g' ${INIPATH}")
+    echo -e "Restarting the phpfpm container..."
+    (docker-compose restart phpfpm)
+    statusXdebug
+  else
+    statusXdebug
+  fi
+}
+
+function statusXdebug()
+{
+  INICONTENT=$(docker-compose exec -T -u root phpfpm bash -c "cat $INIPATH")
+  SEMICOLON=$(echo "${INICONTENT}"|grep -Ec '^;')
+  echo "${INICONTENT}"
+  if [[ "$SEMICOLON" == "1" ]]; then
+    echo -e "Xdebug is disabled"
+  else
+    echo -e "Xdebug is enabled"
+  fi
+}
+
+function usage() 
+{
+  echo -e "Usage:"
+    echo -e ""
+    echo -e "$ bin/xdebug [ARG]" 
+    echo -e ""
+    echo -e "Arguments:"
+    echo -e "-i, --install"
+    echo -e "  Installs (or checks the config) Xdebug"
+    echo -e "-e, --enableXdebug"
+    echo -e "  Start Xdebug"
+    echo -e "-d, --disable"
+    echo -e "  Disables Xdebug"
+    echo -e "-s, --status"
+    echo -e "  Xdebug status"
+}
+
+if [ ! "$1" ]; then
+  echo -e "Please provide an argument"
+  usage
+fi
+
+while (( "$#" )); do
+  case "$1" in
+    -i|--install)
+      installXdebug
+      shift
+      ;;
+    -e|--enable)
+      enableXdebug
+      shift
+      ;;
+    -d|--disable)
+      disableXdebug
+      shift
+      ;;
+    -s|--status)
+      statusXdebug
+      shift
+      ;;
+    *)
+      echo "Error: Unsupported flag $1"
+      usage
+      exit 1
+      ;;
+  esac
+done
