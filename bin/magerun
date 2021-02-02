@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-docker-compose exec -T phpfpm magerun "$@"
+docker-compose exec -T phpfpm /var/www/html/magerun "$@"

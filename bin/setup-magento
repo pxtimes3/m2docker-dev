@@ -90,7 +90,7 @@ function checkDockerImages()
     MISSINGIMAGES+=("php")
   fi
 
-  if [[ $(docker images | grep -Ec "myelasticsearcha") == 1 ]]; then
+  if [[ $(docker images | grep -Ec "myelasticsearch") == 1 ]]; then
     echo -e "  Found \"myelasticsearch\""
   else
     MISSINGIMAGES+=("elasticsearch")
@@ -109,7 +109,8 @@ function checkDockerImages()
       CHOICE=Y
       echo -e "\033[1mQuiet mode on. Skipping... \033[0m"
     else
-      read -p -r "If you have built your own images and updated docker-compose.yml accordingly answer yes [Y/n]? " CHOICE
+      echo -n '\a'
+      read -p "If you have built your own images and updated docker-compose.yml accordingly answer yes [Y/n]? " CHOICE
       case "$CHOICE" in 
         n|N ) buildDockerImages "${MISSINGIMAGES[@]}";;
         #* ) copyfiles;;
@@ -144,6 +145,8 @@ function download()
     else
       echo -e "\033[1mmagento2-${EXT}.tar.gz found in source/\033[0m"
   fi
+
+  extract
 }
 
 function extract() 
@@ -155,6 +158,8 @@ function extract()
     echo -e "\033[1mExtracting magento2-${EXT}.tar.gz to ./src\033[0m"
       mkdir -p src && tar xzf ./source/magento2-${EXT}.tar.gz -o -C src
   fi
+
+  copyfiles
 }
 
 function preinstall()
@@ -187,12 +192,13 @@ function preinstall()
   echo -e "  \033[1mTIMEZONE\033[0m = ${TIMEZONE}\n"
 
   if [ $QUIET == 1 ]; then
-    copyfiles
+    download
   else
-    read -p -r "Is this correct [Y/n]? " CHOICE
+    echo -n '\a'
+    read -p "Is this correct [Y/n]? " CHOICE
     case "$CHOICE" in 
         n|N ) echo -e "Please edit the env-file and re-run the installer."; return;;
-        * ) copyfiles;;
+        * ) download;;
     esac
   fi
 
@@ -201,9 +207,10 @@ function preinstall()
 
 function copyfiles()
 {
-  if ! docker-compose -f docker-compose.yml up -d; then
+
+  if ! docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d; then
     echo -e "\033[1m\033[31mERROR: Failed to start Docker services\033[0m"
-    exit
+    exit 1
   fi
   sleep 5
 
@@ -214,14 +221,14 @@ function copyfiles()
 
   if ! docker cp ./src/./ "${PHPFPM_CONTAINER}":/var/www/html; then
     echo -e "\033[1m\033[31mERROR: Copying of files failed!\033[0m"
-    exit
+    exit 1
   else
     echo -e "\033[1mFiles copied from src/ to volume...\033[0m"
   fi
   
   if ! docker-compose exec -T -u root phpfpm chmod u+x bin/magento; then
     echo -e "ERROR: Couldn't set permissions on bin/magento!"
-    exit
+    exit 1
   fi
   docker-compose exec -T -u root phpfpm chown -R app:app /var/www/html/
   docker-compose exec -T phpfpm cp /var/www/html/nginx.conf.sample /var/www/html/nginx.conf
@@ -236,13 +243,14 @@ function composerSetup()
     echo -e "Keys for repo.magento.com set..."
   fi
 
-  echo -e "\033[1mYou will now see the following from Composer:\033[0m"
+  echo -e "\033[1mYou will see the following from Composer:\033[0m"
   echo -e "  Package hirak/prestissimo is abandoned... "
   echo -e "\033[1mWhich is totally fine since we're still forced to use Composer v1.\033[0m"
   echo -e "\033[1mYou can safely remove this once the Magento 2 modules are updated to play nice with Composer v2\033[0m"
-    docker-compose exec -T phpfpm composer global require hirak/prestissimo
+  
+  docker-compose exec -T phpfpm composer global require hirak/prestissimo
 
-    echo -e "\033[1mUpdating Composer modules...\033[0m"
+  echo -e "\033[1mUpdating Composer modules. This will take a while...\033[0m"
   docker-compose exec -T phpfpm composer update
 
   installMagento
@@ -340,15 +348,16 @@ function postInstall()
   docker-compose exec -T phpfpm bin/magento cache:flush
 
   echo -e "Installing Pestle..."
-  cd ./src
-  curl -LO http://pestle.pulsestorm.net/pestle.phar
-  chmod +x pestle.phar
+  #docker-compose exec -T phpfpm cd ./src
+  docker-compose exec -T phpfpm curl -LO http://pestle.pulsestorm.net/pestle.phar
+  docker-compose exec -T phpfpm chmod u+x pestle.phar
 
   echo -e "Installing n98-magerun2"
-  curl -O https://files.magerun.net/n98-magerun2.phar
-  mv n98-magerun2.phar magerun
-  chmod +x magerun
-  cd ..
+  docker-compose exec -T phpfpm curl -O https://files.magerun.net/n98-magerun2.phar
+  docker-compose exec -T phpfpm chmod u+x n98-magerun2.phar
+  docker-compose exec -T phpfpm mv n98-magerun2.phar magerun
+  docker-compose exec -T phpfpm chmod u+x magerun
+  #cd ..
 
   userScripts
   
@@ -357,6 +366,7 @@ function postInstall()
   echo -e "\033[1mAccess backend here:\033[0m  https://${BASE_URL}/${ADMIN_URL}"
   echo -e "  \033[1mUsername:\033[0m ${ADMIN_USER}"
   echo -e "  \033[1mPassword:\033[0m ${ADMIN_PASSWORD}"
+  printf '\a'
 }
 
 function userScripts()
@@ -364,12 +374,12 @@ function userScripts()
   USERFILES=$(find ./conf.d -type f -name '*.sh' 2> /dev/null | wc -l)
   echo $USERFILES
   if [[ $USERFILES -gt 0 ]]; then
-    echo -e "Running scripts in conf.d... "
+    echo -e "\033[1mRunning scripts in conf.d... \033[0m"
     for f in ./conf.d/*.sh; do
       bash "$f" -H || break
     done
   else
-    echo -e "No scripts found in conf.d."
+    echo -e "\033[1mNo scripts found in conf.d. \033[0m"
   fi
 }
 
