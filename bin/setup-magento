@@ -333,6 +333,17 @@ function postInstall()
   docker-compose exec -T phpfpm bin/magento indexer:reindex
   docker-compose exec -T phpfpm bin/magento cache:flush
 
+  echo -e "Installing Pestle..."
+  cd ./src
+  curl -LO http://pestle.pulsestorm.net/pestle.phar
+  chmod +x pestle.phar
+
+  echo -e "Installing n98-magerun2"
+  curl -O https://files.magerun.net/n98-magerun2.phar
+  mv n98-magerun2.phar magerun
+  chmod +x magerun
+  cd ..
+
   echo -e "\033[1mInstallation complete!\033[0m\n"
   echo -e "\033[1mAccess frontend here:\033[0m https://${BASE_URL}/"
   echo -e "\033[1mAccess backend here:\033[0m  https://${BASE_URL}/${ADMIN_URL}"
