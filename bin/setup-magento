@@ -393,9 +393,6 @@ while [ "$1" != "" ]; do
   shift
 done
 
-userScripts
-exit
-
 preinstall
 composerSetup
 installMagento
