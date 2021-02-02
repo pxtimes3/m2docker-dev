@@ -195,6 +195,8 @@ function preinstall()
         * ) copyfiles;;
     esac
   fi
+
+  composerSetup
 }
 
 function copyfiles()
@@ -242,6 +244,8 @@ function composerSetup()
 
     echo -e "\033[1mUpdating Composer modules...\033[0m"
   docker-compose exec -T phpfpm composer update
+
+  installMagento
 }
 
 function installMagento()
@@ -280,6 +284,8 @@ function installMagento()
     --search-engine=elasticsearch7 \
     --elasticsearch-host=elasticsearch \
     --use-rewrites=1
+
+  postInstall
 }
 
 function postInstall()
@@ -393,7 +399,15 @@ while [ "$1" != "" ]; do
   shift
 done
 
-preinstall
-composerSetup
-installMagento
-postInstall
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]
+then
+  preinstall
+  if [ $? -gt 0 ]
+  then
+    exit 1
+  fi
+fi
+
+
+
+
