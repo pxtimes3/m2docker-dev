@@ -57,12 +57,15 @@ function checkContainers()
 
 while [ "$1" != "" ]; do
     PARAM=$(echo "$1" | awk -F= '{print $1}')
+    echo "$PARAM"
     case $PARAM in
       -r)
         start
+        exit
         ;;
       -s)
        shutdown
+       exit
         ;;
       *)
         echo -e "ERROR: unknown parameter \"${PARAM}\""
