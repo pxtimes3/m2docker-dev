@@ -354,7 +354,6 @@ function postInstall()
 
   echo -e "Installing n98-magerun2"
   docker-compose exec -T phpfpm curl -O https://files.magerun.net/n98-magerun2.phar
-  docker-compose exec -T phpfpm chmod u+x n98-magerun2.phar
   docker-compose exec -T phpfpm mv n98-magerun2.phar magerun
   docker-compose exec -T phpfpm chmod u+x magerun
   #cd ..
