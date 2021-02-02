@@ -344,11 +344,27 @@ function postInstall()
   chmod +x magerun
   cd ..
 
+  userScripts
+  
   echo -e "\033[1mInstallation complete!\033[0m\n"
   echo -e "\033[1mAccess frontend here:\033[0m https://${BASE_URL}/"
   echo -e "\033[1mAccess backend here:\033[0m  https://${BASE_URL}/${ADMIN_URL}"
   echo -e "  \033[1mUsername:\033[0m ${ADMIN_USER}"
   echo -e "  \033[1mPassword:\033[0m ${ADMIN_PASSWORD}"
+}
+
+function userScripts()
+{
+  USERFILES=$(find ./conf.d -type f -name '*.sh' 2> /dev/null | wc -l)
+  echo $USERFILES
+  if [[ $USERFILES -gt 0 ]]; then
+    echo -e "Running scripts in conf.d... "
+    for f in ./conf.d/*.sh; do
+      bash "$f" -H || break
+    done
+  else
+    echo -e "No scripts found in conf.d."
+  fi
 }
 
 while [ "$1" != "" ]; do
@@ -377,6 +393,8 @@ while [ "$1" != "" ]; do
   shift
 done
 
+userScripts
+exit
 
 preinstall
 composerSetup
