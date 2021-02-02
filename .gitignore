@@ -2,3 +2,4 @@ src/*
 env
 source/*
 .DS_Store
+conf.d/*.sh
