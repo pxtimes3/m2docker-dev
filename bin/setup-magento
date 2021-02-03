@@ -340,6 +340,9 @@ function postInstall()
 
   echo -e "\033[1mDisabling 2FA... \033[0m"
   docker-compose exec -T phpfpm bin/magento config:set twofactorauth/general/enable 0
+  
+  echo -e "\033[1mSetting admin session lifetime to 1 year... \033[0m"
+  docker-compose exec -T phpfpm bin/magento config:set admin/security/session_lifetime 31536000
 
   echo -e "\033[1mTurning on developer mode, reindexing and flushing the cache... \033[0m"
   docker-compose exec -T phpfpm bin/magento deploy:mode:set developer

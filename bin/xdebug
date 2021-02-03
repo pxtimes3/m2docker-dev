@@ -6,11 +6,11 @@ XDEBUGPATH=$(docker-compose exec -T -u root phpfpm pecl list-files xdebug | grep
 
 function installXdebug()
 {
-  if [[ $INICONTENT != "zendextension=${XDEBUGPATH}" ]]; then
+  if [[ $INICONTENT != "zend_extension=${XDEBUGPATH}" ]]; then
     echo -e "Xdebug not configured properly..."
     echo -e "${INICONTENT}"
-    echo -e "Setting docker-php-ext-xdebug.ini to zendextension=${XDEBUGPATH}"
-    (docker-compose exec -T -u root phpfpm bash -c "echo zendextension=${XDEBUGPATH} > /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini")
+    echo -e "Setting docker-php-ext-xdebug.ini to zend_extension=${XDEBUGPATH}"
+    (docker-compose exec -T -u root phpfpm bash -c "echo zend_extension=${XDEBUGPATH} > /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini")
     echo -e "Restarting the phpfpm container..."
     (docker-compose restart phpfpm)
   else
@@ -23,7 +23,7 @@ function disableXdebug()
   SEMICOLON=$(echo "${INICONTENT}"|grep -Ec '^;')
   
   if [ "$SEMICOLON" != "1" ]; then
-    (docker-compose exec -T -u root phpfpm bash -c "sed -Ei 's/^zendextension/;zendextension/g' ${INIPATH}")
+    (docker-compose exec -T -u root phpfpm bash -c "sed -Ei 's/^zend_extension/;zend_extension/g' ${INIPATH}")
     echo -e "Restarting the phpfpm container..."
     (docker-compose restart phpfpm)
     statusXdebug
@@ -37,7 +37,7 @@ function enableXdebug()
   SEMICOLON=$(echo "${INICONTENT}"|grep -Ec '^;')
   
   if [ "$SEMICOLON" == "1" ]; then
-    (docker-compose exec -T -u root phpfpm bash -c "sed -Ei 's/^;zendextension/zendextension/g' ${INIPATH}")
+    (docker-compose exec -T -u root phpfpm bash -c "sed -Ei 's/^;zend_extension/zend_extension/g' ${INIPATH}")
     echo -e "Restarting the phpfpm container..."
     (docker-compose restart phpfpm)
     statusXdebug
