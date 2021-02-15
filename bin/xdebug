@@ -50,12 +50,19 @@ function statusXdebug()
 {
   INICONTENT=$(docker-compose exec -T -u root phpfpm bash -c "cat $INIPATH")
   SEMICOLON=$(echo "${INICONTENT}"|grep -Ec '^;')
-  echo "${INICONTENT}"
+  PORT=$(docker-compose exec -T -u root phpfpm bash -c "php -i | grep -e xdebug.client.port | awk '{print \$5}'")
+  #echo "${INICONTENT}"
   if [[ "$SEMICOLON" == "1" ]]; then
     echo -e "Xdebug is disabled"
   else
-    echo -e "Xdebug is enabled"
+    echo -e "Xdebug is enabled on port ${PORT}"
   fi
+}
+
+function iniXdebug()
+{
+  INICONTENT=$(docker-compose exec -T -u root phpfpm bash -c "php -i | grep -e 'xdebug\.'")
+  echo -e "${INICONTENT}"
 }
 
 function usage() 
@@ -73,6 +80,8 @@ function usage()
     echo -e "  Disables Xdebug"
     echo -e "-s, --status"
     echo -e "  Xdebug status"
+    echo -e "--ini"
+    echo -e "  Displays all Xdebug-settings as reported by php -i"
 }
 
 if [ ! "$1" ]; then
@@ -96,6 +105,10 @@ while (( "$#" )); do
       ;;
     -s|--status)
       statusXdebug
+      shift
+      ;;
+    --ini)
+      iniXdebug
       shift
       ;;
     *)
