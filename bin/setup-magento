@@ -5,6 +5,8 @@ SAMPLEDATA=0
 EXT=""
 QUIET=0
 
+set -x
+
 function usage()
 {
   echo -e "Usage:"
@@ -122,7 +124,7 @@ function checkDockerImages()
 function buildDockerImages()
 {
   echo -e "\033[1mBuilding images...\033[0m"
-  echo -e ""
+  echo -e "\033[1mGo get a cup of coffee, this will take a while... \033[0m"
 
   for i in "${@}"
   do
@@ -192,10 +194,11 @@ function preinstall()
   echo -e "  \033[1mTIMEZONE\033[0m = ${TIMEZONE}\n"
 
   if [ $QUIET == 1 ]; then
-    download
+    composerSetup
   else
-    echo -n '\a'
+    echo -e "\033[1m"
     read -p "Is this correct [Y/n]? " CHOICE
+    echo -e "\033[0m"
     case "$CHOICE" in 
         n|N ) echo -e "Please edit the env-file and re-run the installer."; return;;
         * ) download;;
@@ -298,10 +301,6 @@ function installMagento()
 
 function postInstall()
 {
-  echo -e "\033[1mInstalling markshust/magento2-module-disabletwofactorauth... \033[0m"
-  docker-compose exec -T phpfpm composer require markshust/magento2-module-disabletwofactorauth
-  docker-compose exec -T phpfpm bin/magento module:enable MarkShust_DisableTwoFactorAuth
-
   echo -e "\033[1m De-bloating the install... \033[0m"
   docker-compose exec -T phpfpm bin/magento module:disable \
     Amazon_Core \
@@ -338,9 +337,6 @@ function postInstall()
 
   docker-compose exec -T phpfpm bin/magento setup:upgrade
 
-  echo -e "\033[1mDisabling 2FA... \033[0m"
-  docker-compose exec -T phpfpm bin/magento config:set twofactorauth/general/enable 0
-  
   echo -e "\033[1mSetting admin session lifetime to 1 year... \033[0m"
   docker-compose exec -T phpfpm bin/magento config:set admin/security/session_lifetime 31536000
 
@@ -351,7 +347,6 @@ function postInstall()
   docker-compose exec -T phpfpm bin/magento cache:flush
 
   echo -e "Installing Pestle..."
-  #docker-compose exec -T phpfpm cd ./src
   docker-compose exec -T phpfpm curl -LO http://pestle.pulsestorm.net/pestle.phar
   docker-compose exec -T phpfpm chmod u+x pestle.phar
 
@@ -359,9 +354,10 @@ function postInstall()
   docker-compose exec -T phpfpm curl -O https://files.magerun.net/n98-magerun2.phar
   docker-compose exec -T phpfpm mv n98-magerun2.phar magerun
   docker-compose exec -T phpfpm chmod u+x magerun
-  #cd ..
 
   userScripts
+
+  docker-compose exec -T nginx nginx -s reload >> /dev/null 2>&1
   
   echo -e "\033[1mInstallation complete!\033[0m\n"
   echo -e "\033[1mAccess frontend here:\033[0m https://${BASE_URL}/"
@@ -419,7 +415,3 @@ then
     exit 1
   fi
 fi
-
-
-
-
