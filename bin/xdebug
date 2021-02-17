@@ -20,8 +20,8 @@ function installXdebug()
 
 function disableXdebug()
 {
-  SEMICOLON=$(echo "${INICONTENT}"|grep -Ec '^;')
-  
+  SEMICOLON=$(grep -Eco '^;zend_extension' <<< "${INICONTENT}")
+
   if [ "$SEMICOLON" != "1" ]; then
     (docker-compose exec -T -u root phpfpm bash -c "sed -Ei 's/^zend_extension/;zend_extension/g' ${INIPATH}")
     echo -e "Restarting the phpfpm container..."
@@ -34,7 +34,7 @@ function disableXdebug()
 
 function enableXdebug()
 {
-  SEMICOLON=$(echo "${INICONTENT}"|grep -Ec '^;')
+  SEMICOLON=$(grep -Eco '^;zend_extension' <<< "${INICONTENT}")
   
   if [ "$SEMICOLON" == "1" ]; then
     (docker-compose exec -T -u root phpfpm bash -c "sed -Ei 's/^;zend_extension/zend_extension/g' ${INIPATH}")
@@ -49,7 +49,7 @@ function enableXdebug()
 function statusXdebug()
 {
   INICONTENT=$(docker-compose exec -T -u root phpfpm bash -c "cat $INIPATH")
-  SEMICOLON=$(echo "${INICONTENT}"|grep -Ec '^;')
+  SEMICOLON=$(grep -Eco '^;zend_extension' <<< "${INICONTENT}")
   PORT=$(docker-compose exec -T -u root phpfpm bash -c "php -i | grep -e xdebug.client.port | awk '{print \$5}'")
   #echo "${INICONTENT}"
   if [[ "$SEMICOLON" == "1" ]]; then
