@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
-VERSION=2.4.1
-SAMPLEDATA=0
+VERSION=2.4.0
+SAMPLEDATA=1
 EXT=""
 QUIET=0
 
-set -x
+#set -x
 
 function usage()
 {
