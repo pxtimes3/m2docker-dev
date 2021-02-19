@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+docker-compose down --remove-orphans
+docker volume rm $(docker volume ls | awk '{print $2}' | grep -e '^[a-z0-9]')

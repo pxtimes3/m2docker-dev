@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y \
   libssh2-1-dev \
   libxslt1-dev \
   libzip-dev \
+  libtool \
   lsof \
   default-mysql-client \
   vim \
@@ -49,8 +50,9 @@ RUN docker-php-ext-install \
 RUN pecl channel-update pecl.php.net \
   && pecl install xdebug
 
-RUN docker-php-ext-enable xdebug \
-  && sed -i -e 's/^zend_extension/\;zend_extension/g' /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+RUN docker-php-ext-enable xdebug
+
+COPY conf/docker-php-ext-xdebug.ini /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
 
 RUN pecl install ssh2-1.2 \
   && docker-php-ext-enable ssh2
@@ -69,12 +71,14 @@ RUN curl -sSLO https://github.com/mailhog/mhsendmail/releases/download/v0.2.0/mh
   && chmod +x mhsendmail_linux_amd64 \
   && mv mhsendmail_linux_amd64 /usr/local/bin/mhsendmail
 
-#RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
-#  && php composer-setup.php --install-dir=/usr/local/bin --filename=composer \
-#  && php -r "unlink('composer-setup.php');"
+RUN curl -fsSL https://deb.nodesource.com/setup_15.x | bash - \
+    && curl -sL https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - \
+    && echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list \
+    && apt-get update
+    && apt-get install -y nodejs yarn
 
 RUN curl -sS https://getcomposer.org/installer | \
-  php -- --1 --install-dir=/usr/local/bin --filename=composer
+  php -- --1 --install-dir=/usr/local/bin --filename=composer --version=1.9.0
 
 RUN printf '* *\t* * *\tapp\t%s/usr/local/bin/php /var/www/html/update/cron.php\n' >> /etc/crontab \
   && printf '* *\t* * *\tapp\t%s/usr/local/bin/php /var/www/html/bin/magento cron:run\n' >> /etc/crontab \
