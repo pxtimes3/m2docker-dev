@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
-VERSION=2.4.1
-SAMPLEDATA=0
+VERSION=2.4.0
+SAMPLEDATA=1
 EXT=""
 QUIET=0
 
-set -x
+#set -x
 
 function usage()
 {
@@ -229,11 +229,11 @@ function copyfiles()
     echo -e "\033[1mFiles copied from src/ to volume...\033[0m"
   fi
   
-  if ! docker-compose exec -T -u root phpfpm chmod u+x bin/magento; then
+  if ! docker-compose exec -u root -T phpfpm chmod u+x bin/magento; then
     echo -e "ERROR: Couldn't set permissions on bin/magento!"
     exit 1
   fi
-  docker-compose exec -T -u root phpfpm chown -R app:app /var/www/html/
+  docker-compose exec -u root -T phpfpm chown -R app:app /var/www/
   docker-compose exec -T phpfpm cp /var/www/html/nginx.conf.sample /var/www/html/nginx.conf
 }
 
@@ -322,7 +322,7 @@ function postInstall()
     Magento_Dhl \
     Magento_Elasticsearch6 \
     Magento_Fedex \
-    Magento_NewRelicReporting \
+    Magento_NewRelicReporting \composerSetup
     Magento_Ups \
     Magento_Usps \
     Magento_Weee \
@@ -401,7 +401,7 @@ while [ "$1" != "" ]; do
     *)
       echo -e "ERROR: unknown parameter \"$PARAM\""
       usage
-      exit
+      exitcomposerSetup
       ;;
   esac
   shift
