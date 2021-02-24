@@ -302,7 +302,7 @@ function installMagento()
 function postInstall()
 {
   echo -e "\033[1m De-bloating the install... \033[0m"
-  docker-compose exec -T phpfpm bin/magento module:disable \
+  docker-compose exec -T -u root phpfpm bin/magento module:disable \
     Amazon_Core \
     Amazon_Login \
     Amazon_Payment \
@@ -322,7 +322,7 @@ function postInstall()
     Magento_Dhl \
     Magento_Elasticsearch6 \
     Magento_Fedex \
-    Magento_NewRelicReporting \composerSetup
+    Magento_NewRelicReporting \
     Magento_Ups \
     Magento_Usps \
     Magento_Weee \
