@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 RUNNINGCONTAINERS=()
+RESTART=0
 
 function usage() 
 {
@@ -24,7 +25,7 @@ function start()
     do
       RUNNINGCONTAINERSLINE="${RUNNINGCONTAINERSLINE} ${i}"
     done
-    if [[ $RESTART == 1 ]];then
+    if [[ $RESTART == 1 ]]; then
       echo -e "Found the following containers running: ${RUNNINGCONTAINERSLINE}"
       echo -e "Stopping running containers..."
       docker stop "${RUNNINGCONTAINERSLINE}"
@@ -60,7 +61,8 @@ while [ "$1" != "" ]; do
     echo "$PARAM"
     case $PARAM in
       -r)
-        start
+        RESTART=1
+        shutdown && start
         exit
         ;;
       -s)

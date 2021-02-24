@@ -335,8 +335,6 @@ function postInstall()
     Vertex_Tax \
     Yotpo_Yotpo
 
-  docker-compose exec -T phpfpm bin/magento setup:upgrade
-
   echo -e "\033[1mSetting admin session lifetime to 1 year... \033[0m"
   docker-compose exec -T phpfpm bin/magento config:set admin/security/session_lifetime 31536000
 
@@ -356,6 +354,8 @@ function postInstall()
   docker-compose exec -T phpfpm chmod u+x magerun
 
   userScripts
+
+  docker-compose exec -T phpfpm bin/magento setup:upgrade
 
   docker-compose exec -T nginx nginx -s reload >> /dev/null 2>&1
   

@@ -1,4 +1,12 @@
 #!/usr/bin/env bash
 
-docker-compose down --remove-orphans
-docker volume rm $(docker volume ls | awk '{print $2}' | grep -e '^[a-z0-9]')
+function nuke() {
+	docker-compose down --remove-orphans
+	docker volume rm $(docker volume ls | awk '{print $2}' | grep -e '^[a-z0-9]')
+}
+
+read -p "Do you really want to remove ALL containers & volumes [y/N]? " CHOICE
+case "$CHOICE" in 
+	y|Y ) nuke;;
+	* ) exit;;
+esac
