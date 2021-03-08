@@ -1,3 +1,7 @@
+.php_cs.cache
+misc.xml
+tmp/
+eval.php
 _code
 .idea
 src/*
