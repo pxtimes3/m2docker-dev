@@ -5,7 +5,9 @@ SAMPLEDATA=1
 EXT=""
 QUIET=0
 
-#set -x
+if [[ $DEBUG == 1 ]]; then
+  set -x
+fi
 
 function usage()
 {
@@ -194,7 +196,7 @@ function preinstall()
   echo -e "  \033[1mTIMEZONE\033[0m = ${TIMEZONE}\n"
 
   if [ $QUIET == 1 ]; then
-    composerSetup
+    download
   else
     echo -e "\033[1m"
     read -p "Is this correct [Y/n]? " CHOICE
@@ -302,7 +304,7 @@ function installMagento()
 function postInstall()
 {
   echo -e "\033[1m De-bloating the install... \033[0m"
-  docker-compose exec -T -u root phpfpm bin/magento module:disable \
+  docker-compose exec -T phpfpm bin/magento module:disable \
     Amazon_Core \
     Amazon_Login \
     Amazon_Payment \
@@ -331,9 +333,10 @@ function postInstall()
     PayPal_BraintreeGraphQl \
     Temando_ShippingRemover \
     Vertex_AddressValidation \
-    Vertex_AddressValidationApi \
     Vertex_Tax \
     Yotpo_Yotpo
+
+#   Vertex_AddressValidationApi \
 
   echo -e "\033[1mSetting admin session lifetime to 1 year... \033[0m"
   docker-compose exec -T phpfpm bin/magento config:set admin/security/session_lifetime 31536000
@@ -370,7 +373,7 @@ function postInstall()
 function userScripts()
 {
   USERFILES=$(find ./conf.d -type f -name '*.sh' 2> /dev/null | wc -l)
-  echo $USERFILES
+  #echo $USERFILES
   if [[ $USERFILES -gt 0 ]]; then
     echo -e "\033[1mRunning scripts in conf.d... \033[0m"
     for f in ./conf.d/*.sh; do
@@ -398,6 +401,9 @@ while [ "$1" != "" ]; do
     -q|--quiet)
       QUIET=1
       ;;
+    --debug)
+      DEBUG=1
+      ;;
     *)
       echo -e "ERROR: unknown parameter \"$PARAM\""
       usage
@@ -407,11 +413,9 @@ while [ "$1" != "" ]; do
   shift
 done
 
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]
-then
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   preinstall
-  if [ $? -gt 0 ]
-  then
+  if [ $? -gt 0 ]; then
     exit 1
   fi
 fi
