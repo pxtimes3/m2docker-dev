@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 
-function nuke() {
+PREFIX=$(pwd|grep -Eo '[^z\/]+$')
+
+function nuke() {	
 	docker-compose down --remove-orphans
-	docker volume rm $(docker volume ls | awk '{print $2}' | grep -e '^[a-z0-9]')
+	docker volume rm $(docker volume ls | awk '{print $2}' | grep -E "${PREFIX}_")
 }
 
-read -p "Do you really want to remove ALL containers & volumes [y/N]? " CHOICE
+read -p "Do you really want to remove ALL containers & volumes starting with ${PREFIX} [y/N]? " CHOICE
 case "$CHOICE" in 
 	y|Y ) nuke;;
 	* ) exit;;
