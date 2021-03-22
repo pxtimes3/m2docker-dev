@@ -26,6 +26,12 @@ function usage()
   echo -e "  Shows this help"
 }
 
+function getLatestVersion()
+{
+  LATEST_VERSION=$(curl -s http://pubfiles.nexcess.net/magento/ce-packages/magento2-latest-version)
+  VERSION=$LATEST_VERSION
+}
+
 function checkEnv()
 {
   ENVLOC="./env"
@@ -390,7 +396,11 @@ while [ "$1" != "" ]; do
         exit
         ;;
     --version)
-      VERSION=$VALUE
+      if [[ $VALUE == "latest" ]]; then
+        getLatestVersion
+      else
+        VERSION=$VALUE
+      fi
       ;;
     --sample-data)
       SAMPLEDATA=1
@@ -406,6 +416,9 @@ while [ "$1" != "" ]; do
   esac
   shift
 done
+
+echo $VERSION
+exit
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]
 then
