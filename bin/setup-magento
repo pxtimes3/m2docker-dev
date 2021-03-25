@@ -184,38 +184,6 @@ function buildDockerImages()
   done
 }
 
-#function download()
-#{
-#  if [[ $SAMPLEDATA == 1 ]];then
-#    EXT=with-samples-${VERSION}
-#  else
-#    EXT=${VERSION}
-#  fi
-#
-#  if [ ! -f ./source/magento2-${EXT}.tar.gz ]; then
-#    echo -e "\033[1mDownloading magento2-${EXT}.tar.gz\033[0m"
-#      mkdir -p ./source
-#      (cd ./source && curl -fOL http://pubfiles.nexcess.net/magento/ce-packages/magento2-${EXT}.tar.gz)
-#    else
-#      echo -e "\033[1mmagento2-${EXT}.tar.gz found in source/\033[0m"
-#  fi
-#
-#  extract
-#}
-#
-#function extract()
-#{
-#  if [ ! -f ./source/magento2-${EXT}.tar.gz ]; then
-#    echo -e "\033[1m\033[31mERROR: Was expecting to find magento2-${EXT}.tar.gz in source/ but it wasn't there...\033[0m"
-#    exit 1
-#  else
-#    echo -e "\033[1mExtracting magento2-${EXT}.tar.gz to ./src\033[0m"
-#      mkdir -p src && tar xzf ./source/magento2-${EXT}.tar.gz -o -C src
-#  fi
-#
-#  copyfiles
-#}
-
 function composerSetup()
 {
   if ! docker-compose -f docker-compose.yml up -d; then
