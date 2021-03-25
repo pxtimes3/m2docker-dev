@@ -28,7 +28,7 @@ services:
       - "3306:3306"
     env_file: ./env
     volumes:
-      - dbdata:/var/lib/mysql
+      - dbdata:/var/lib/mysql:delegated # container is the authority
 
   redis:
     image: redis:5.0-alpine
