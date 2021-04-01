@@ -314,7 +314,7 @@ function copyfiles()
   echo -e "\033[1mCopying files from container to host...\033[0m"
 
   PHPFPM_CONTAINER=$(docker-compose ps -q phpfpm | awk '{print $1}')
-  docker cp "${PHPFPM_CONTAINER}":/var/www/html/ ./src/
+  docker cp "${PHPFPM_CONTAINER}":/var/www/html/. ./src/
 
   if ! docker cp ./src/./ "${PHPFPM_CONTAINER}":/var/www/html; then
     echo -e "\033[1m\033[31mERROR: Copying of files failed!\033[0m"
