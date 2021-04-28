@@ -6,6 +6,7 @@ services:
       #- ./src:/var/www/html
       ##
       - ./src/app/code:/var/www/html/app/code:cached
+      - ./src/vendor:/var/www/html/vendor:delegated
       #- ./src/app/design:/var/www/html/app/design:cached
       #- ./src/app/etc:/var/www/html/app/etc:cached
       #- ./src/composer.json:/var/www/html/composer.json:cached
