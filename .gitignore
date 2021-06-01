@@ -6,6 +6,10 @@ _code
 .idea
 src/*
 env
+env.php
 source/*
 .DS_Store
 conf.d/*.sh
+!conf.d/00-2fa.sh
+**/test*
+.phpunit.result.cache

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-VERSION=2.4.0
 SAMPLEDATA=1
 EXT=""
 QUIET=0
@@ -34,6 +33,49 @@ function getLatestVersion()
 {
   LATEST_VERSION=$(curl -s http://pubfiles.nexcess.net/magento/ce-packages/magento2-latest-version)
   VERSION=$LATEST_VERSION
+}
+
+function preinstall()
+{
+  if [[ $(pwd | grep -E -o 'bin$') == "bin" ]]; then
+    echo -e "Please run the script from your project root directory."
+    exit
+  fi
+
+  checkEnv
+  checkDockerImages
+
+  if [[ $SAMPLEDATA == 0 ]]; then
+    echo -e "\nInstalling Magento 2, \033[1mversion ${VERSION}\033[0m, with the following parameters:"
+  else
+    echo -e "\nInstalling Magento 2, \033[1mversion ${VERSION} with sample data\033[0m, with the following parameters:"
+  fi
+
+  echo -e "  \033[1mMYSQL_HOST\033[0m = ${MYSQL_HOST}"
+  echo -e "  \033[1mMYSQL_ROOT_PASSWORD\033[0m = ${MYSQL_ROOT_PASSWORD}"
+  echo -e "  \033[1mMYSQL_DATABASE\033[0m = ${MYSQL_DATABASE}"
+  echo -e "  \033[1mMYSQL_USER\033[0m = ${MYSQL_USER}"
+  echo -e "  \033[1mMYSQL_PASSWORD\033[0m = ${MYSQL_PASSWORD}"
+  echo -e "  \033[1mBASE_URL\033[0m = ${BASE_URL}"
+  echo -e "  \033[1mADMIN_URL\033[0m = ${ADMIN_URL}"
+  echo -e "  \033[1mADMIN_USER\033[0m = ${ADMIN_USER}"
+  echo -e "  \033[1mADMIN_PASSWORD\033[0m = ${ADMIN_PASSWORD}"
+  echo -e "  \033[1mLANGUAGE\033[0m = ${LANGUAGE}"
+  echo -e "  \033[1mCURRENCY\033[0m = ${CURRENCY}"
+  echo -e "  \033[1mTIMEZONE\033[0m = ${TIMEZONE}\n"
+
+  if [ $QUIET == 1 ]; then
+    #download
+    composerSetup
+  else
+    echo -e "\033[1m"
+    read -p "Is this correct [Y/n]? " CHOICE
+    echo -e "\033[0m"
+    case "$CHOICE" in
+        n|N ) echo -e "Please edit the env-file and re-run the installer."; return;;
+        * ) composerSetup #download;;
+    esac
+  fi
 }
 
 function checkEnv()
@@ -142,112 +184,6 @@ function buildDockerImages()
   done
 }
 
-function download()
-{
-  if [[ $SAMPLEDATA == 1 ]];then
-    EXT=with-samples-${VERSION}
-  else
-    EXT=${VERSION}
-  fi
-
-  if [ ! -f ./source/magento2-${EXT}.tar.gz ]; then
-    echo -e "\033[1mDownloading magento2-${EXT}.tar.gz\033[0m"
-      mkdir -p ./source
-      (cd ./source && curl -fOL http://pubfiles.nexcess.net/magento/ce-packages/magento2-${EXT}.tar.gz)
-    else
-      echo -e "\033[1mmagento2-${EXT}.tar.gz found in source/\033[0m"
-  fi
-
-  extract
-}
-
-function extract() 
-{
-  if [ ! -f ./source/magento2-${EXT}.tar.gz ]; then
-    echo -e "\033[1m\033[31mERROR: Was expecting to find magento2-${EXT}.tar.gz in source/ but it wasn't there...\033[0m"
-    exit 1
-  else
-    echo -e "\033[1mExtracting magento2-${EXT}.tar.gz to ./src\033[0m"
-      mkdir -p src && tar xzf ./source/magento2-${EXT}.tar.gz -o -C src
-  fi
-
-  copyfiles
-}
-
-function preinstall()
-{
-  if [[ $(pwd | grep -E -o 'bin$') == "bin" ]]; then
-    echo -e "Please run the script from your project root directory."
-    exit
-  fi
-  
-  checkEnv
-  checkDockerImages
-  
-  if [[ $SAMPLEDATA == 0 ]]; then
-    echo -e "\nInstalling Magento 2, \033[1mversion ${VERSION}\033[0m, with the following parameters:"
-  else
-    echo -e "\nInstalling Magento 2, \033[1mversion ${VERSION} with sample data\033[0m, with the following parameters:"
-  fi
-
-  echo -e "  \033[1mMYSQL_HOST\033[0m = ${MYSQL_HOST}"
-  echo -e "  \033[1mMYSQL_ROOT_PASSWORD\033[0m = ${MYSQL_ROOT_PASSWORD}"
-  echo -e "  \033[1mMYSQL_DATABASE\033[0m = ${MYSQL_DATABASE}"
-  echo -e "  \033[1mMYSQL_USER\033[0m = ${MYSQL_USER}"
-  echo -e "  \033[1mMYSQL_PASSWORD\033[0m = ${MYSQL_PASSWORD}"
-  echo -e "  \033[1mBASE_URL\033[0m = ${BASE_URL}"
-  echo -e "  \033[1mADMIN_URL\033[0m = ${ADMIN_URL}"
-  echo -e "  \033[1mADMIN_USER\033[0m = ${ADMIN_USER}"
-  echo -e "  \033[1mADMIN_PASSWORD\033[0m = ${ADMIN_PASSWORD}"
-  echo -e "  \033[1mLANGUAGE\033[0m = ${LANGUAGE}"
-  echo -e "  \033[1mCURRENCY\033[0m = ${CURRENCY}"
-  echo -e "  \033[1mTIMEZONE\033[0m = ${TIMEZONE}\n"
-
-  if [ $QUIET == 1 ]; then
-    #download
-    composerSetup
-  else
-    echo -e "\033[1m"
-    read -p "Is this correct [Y/n]? " CHOICE
-    echo -e "\033[0m"
-    case "$CHOICE" in 
-        n|N ) echo -e "Please edit the env-file and re-run the installer."; return;;
-        * ) composerSetup #download;;
-    esac
-  fi
-
-  composerSetup
-}
-
-function copyfiles()
-{
-
-  if ! docker-compose -f docker-compose.yml up -d; then
-    echo -e "\033[1m\033[31mERROR: Failed to start Docker services\033[0m"
-    exit 1
-  fi
-  sleep 5
-
-  echo -e "\033[1mCopying files from host to container...\033[0m"
-
-  PHPFPM_CONTAINER=$(docker-compose ps -q phpfpm | awk '{print $1}')
-  docker cp ./src/./ "${PHPFPM_CONTAINER}":/var/www/html
-
-  if ! docker cp ./src/./ "${PHPFPM_CONTAINER}":/var/www/html; then
-    echo -e "\033[1m\033[31mERROR: Copying of files failed!\033[0m"
-    exit 1
-  else
-    echo -e "\033[1mFiles copied from src/ to volume...\033[0m"
-  fi
-  
-  if ! docker-compose exec -u root -T phpfpm chmod u+x bin/magento; then
-    echo -e "ERROR: Couldn't set permissions on bin/magento!"
-    exit 1
-  fi
-  docker-compose exec -u root -T phpfpm chown -R app:app /var/www/
-  docker-compose exec -T phpfpm cp /var/www/html/nginx.conf.sample /var/www/html/nginx.conf
-}
-
 function composerSetup()
 {
   if ! docker-compose -f docker-compose.yml up -d; then
@@ -332,40 +268,7 @@ function installMagento()
 
 function postInstall()
 {
-  echo -e "\033[1m De-bloating the install... \033[0m"
-  docker-compose exec -T phpfpm bin/magento module:disable \
-    Amazon_Core \
-    Amazon_Login \
-    Amazon_Payment \
-    Dotdigitalgroup_Chat \
-    Dotdigitalgroup_Email \
-    Magento_AdobeIms \
-    Magento_AdobeImsApi \
-    Magento_AdobeStockAdminUi \
-    Magento_AdobeStockAsset \
-    Magento_AdobeStockAssetApi \
-    Magento_AdobeStockClient \
-    Magento_AdobeStockClientApi \
-    Magento_AdobeStockImage \
-    Magento_AdobeStockImageAdminUi \
-    Magento_AdobeStockImageApi \
-    Magento_CardinalCommerce \
-    Magento_Dhl \
-    Magento_Elasticsearch6 \
-    Magento_Fedex \
-    Magento_NewRelicReporting \
-    Magento_Ups \
-    Magento_Usps \
-    Magento_Weee \
-    Magento_WeeeGraphQl \
-    PayPal_Braintree \
-    PayPal_BraintreeGraphQl \
-    Temando_ShippingRemover \
-    Vertex_AddressValidation \
-    Vertex_Tax \
-    Yotpo_Yotpo
-
-#   Vertex_AddressValidationApi \
+  copyfiles
 
   echo -e "\033[1mSetting admin session lifetime to 1 year... \033[0m"
   docker-compose exec -T phpfpm bin/magento config:set admin/security/session_lifetime 31536000
@@ -399,14 +302,44 @@ function postInstall()
   printf '\a'
 }
 
+function copyfiles()
+{
+
+  if ! docker-compose -f docker-compose.yml up -d; then
+    echo -e "\033[1m\033[31mERROR: Failed to start Docker services\033[0m"
+    exit 1
+  fi
+  sleep 5
+
+  echo -e "\033[1mCopying files from container to host...\033[0m"
+
+  PHPFPM_CONTAINER=$(docker-compose ps -q phpfpm | awk '{print $1}')
+  docker cp "${PHPFPM_CONTAINER}":/var/www/html/. ./src/
+
+  if ! docker cp ./src/./ "${PHPFPM_CONTAINER}":/var/www/html; then
+    echo -e "\033[1m\033[31mERROR: Copying of files failed!\033[0m"
+    exit 1
+  else
+    echo -e "\033[1mFiles copied from src/ to volume...\033[0m"
+  fi
+
+  if ! docker-compose exec -u root -T phpfpm chmod u+x bin/magento; then
+    echo -e "ERROR: Couldn't set permissions on bin/magento!"
+    exit 1
+  fi
+  docker-compose exec -u root -T phpfpm chown -R app:app /var/www/
+  docker-compose exec -T phpfpm cp /var/www/html/nginx.conf.sample /var/www/html/nginx.conf
+}
+
 function userScripts()
 {
-  USERFILES=$(find ./conf.d -type f -name '*.sh' 2> /dev/null | wc -l)
-  #echo $USERFILES
-  if [[ $USERFILES -gt 0 ]]; then
+  USERFILES=$(find -Es ./conf.d -type f -iregex '.*/[0-9]{2}.*sh$' -print | sort)
+  FILECOUNT=$(find -Es ./conf.d -type f -iregex '.*/[0-9]{2}.*sh$' -print | wc -l)
+
+  if [[ $FILECOUNT -gt 0 ]]; then
     echo -e "\033[1mRunning scripts in conf.d... \033[0m"
-    for f in ./conf.d/*.sh; do
-      bash "$f" -H || break
+    for s in ${USERFILES};do
+      bash "$s" -H || break
     done
   else
     echo -e "\033[1mNo scripts found in conf.d. \033[0m"
@@ -443,6 +376,9 @@ while [ "$1" != "" ]; do
       exitcomposerSetup
       ;;
   esac
+  if ! [[ $VERSION ]]; then
+    getLatestVersion
+  fi
   shift
 done
 
