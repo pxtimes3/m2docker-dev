@@ -32,13 +32,13 @@ function start()
     fi
   fi
 
-  docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build --remove-orphans -d
+  docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build --remove-orphans -d
   
 }
 
 function shutdown()
 {
-  docker-compose -f docker-compose.yml -f docker-compose.dev.yml stop
+  docker compose -f docker-compose.yml -f docker-compose.dev.yml stop
 }
 
 function checkContainers()

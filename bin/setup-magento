@@ -13,15 +13,17 @@ function usage()
 {
   echo -e "Usage:"
   echo -e ""
-  echo -e "$ bash setup-magento.bash" 
+  echo -e "$ bash setup-magento" 
   echo -e ""
   echo -e "Arguments:"
   echo -e "--version"
   echo -e "  Your preferred version of Magento 2."
-  echo -e "  bash setup-magento.bash --version=2.4.1"
+  echo -e "  bash setup-magento --version=2.4.1"
+  echo -e "  or:"
+  echo -e "  bash setup-magento --version=latest"
   echo -e "--sample-data"
   echo -e "  Setup Magento 2 with sample data."
-  echo -e "  bash setup-magento.bash --version=2.4.1 --sample-data=1"
+  echo -e "  bash setup-magento --version=2.4.1 --sample-data=1"
   echo -e "--quiet or -q"
   echo -e "  No prompts"
   echo -e "-h or --help"
@@ -202,14 +204,15 @@ function preinstall()
   echo -e "  \033[1mTIMEZONE\033[0m = ${TIMEZONE}\n"
 
   if [ $QUIET == 1 ]; then
-    download
+    #download
+    composerSetup
   else
     echo -e "\033[1m"
     read -p "Is this correct [Y/n]? " CHOICE
     echo -e "\033[0m"
     case "$CHOICE" in 
         n|N ) echo -e "Please edit the env-file and re-run the installer."; return;;
-        * ) download;;
+        * ) composerSetup #download;;
     esac
   fi
 
@@ -219,7 +222,7 @@ function preinstall()
 function copyfiles()
 {
 
-  if ! docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d; then
+  if ! docker-compose -f docker-compose.yml up -d; then
     echo -e "\033[1m\033[31mERROR: Failed to start Docker services\033[0m"
     exit 1
   fi
@@ -247,6 +250,11 @@ function copyfiles()
 
 function composerSetup()
 {
+  if ! docker-compose -f docker-compose.yml up -d; then
+    echo -e "\033[1m\033[31mERROR: Failed to start Docker services\033[0m"
+    exit 1
+  fi
+
   if ! docker-compose exec -T phpfpm composer global config http-basic.repo.magento.com "$PUBLIC_KEY" "$PRIVATE_KEY"; then
     echo -e "\033[1m\033[31mERROR: Couldn't set keys for repo.magento.com!\033[0m"
     exit
@@ -254,14 +262,28 @@ function composerSetup()
     echo -e "Keys for repo.magento.com set..."
   fi
 
+  docker-compose exec -T phpfpm bash -c "composer create-project --repository-url=https://repo.magento.com/ magento/project-community-edition=${VERSION} /var/www/html"
+
   echo -e "\033[1mYou will see the following from Composer:\033[0m"
   echo -e "  Package hirak/prestissimo is abandoned... "
   echo -e "\033[1mWhich is totally fine since we're still forced to use Composer v1.\033[0m"
   echo -e "\033[1mYou can safely remove this once the Magento 2 modules are updated to play nice with Composer v2\033[0m"
   
+  if ! docker-compose exec -T phpfpm bash -c "mkdir -p var/composer_home && cp /var/www/.composer/auth.json var/composer_home/auth.json"; then
+    echo -e "\033[1m\033[31mERROR: Couldn't set keys for repo.magento.com in var/composer_home!\033[0m"
+    exit
+  else
+    echo -e "Keys for repo.magento.com set in var/composer_home..."
+  fi
+
   docker-compose exec -T phpfpm composer global require hirak/prestissimo
 
-  echo -e "\033[1mUpdating Composer modules. This will take a while...\033[0m"
+  if [[ $SAMPLEDATA == 1 ]]; then
+    echo -e "\033[1mInstalling sample data. Go get a nice cup of coffee...\033[0m"
+    docker-compose exec -T phpfpm bash -c "bin/magento sampledata:deploy"
+  fi
+
+  echo -e "\033[1mUpdating Composer modules. Go get a kanelbulle...\033[0m"
   docker-compose exec -T phpfpm composer update
 
   installMagento
@@ -269,13 +291,14 @@ function composerSetup()
 
 function installMagento()
 {
+  
   docker-compose exec -T phpfpm bin/magento setup:install \
     --db-host="$MYSQL_HOST" \
     --db-name="$MYSQL_DATABASE" \
     --db-user="$MYSQL_USER" \
     --db-password="$MYSQL_PASSWORD" \
-    --base-url=https://"$BASE_URL"/ \
-    --base-url-secure=https://"$BASE_URL"/ \
+    --base-url=https://"${BASE_URL}"/ \
+    --base-url-secure=https://"${BASE_URL}"/ \
     --backend-frontname="$ADMIN_URL" \
     --admin-firstname=John \
     --admin-lastname=Doe \
@@ -303,7 +326,7 @@ function installMagento()
     --search-engine=elasticsearch7 \
     --elasticsearch-host=elasticsearch \
     --use-rewrites=1
-
+    
   postInstall
 }
 
@@ -412,7 +435,7 @@ while [ "$1" != "" ]; do
       QUIET=1
       ;;
     --debug)
-      DEBUG=1
+      set -x
       ;;
     *)
       echo -e "ERROR: unknown parameter \"$PARAM\""
@@ -422,9 +445,6 @@ while [ "$1" != "" ]; do
   esac
   shift
 done
-
-echo $VERSION
-exit
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]
 then
