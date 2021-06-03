@@ -13,3 +13,5 @@ conf.d/*.sh
 !conf.d/00-2fa.sh
 **/test*
 .phpunit.result.cache
+eval*.php
+eval.php
